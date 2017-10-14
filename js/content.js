@@ -5,7 +5,7 @@
 
     var DEBUG = false;
 
-    function logger(obj) {
+    function Logger(obj) {
         if (DEBUG) {
             console.log(obj);
         }
@@ -15,7 +15,7 @@
     chrome.runtime.onMessage.addListener(function cb_GetImgInfo(msg, sender, sendResponse) {
         // contextmenuクリック
         if (msg.msg === "contextMenu") {
-            var info = getImgInfo(d);
+            var info = GetImgInfo(d);
 
             if (info.result) {
                 sendResponse({
@@ -27,6 +27,30 @@
                 // responseを返さないと、長い待ち時間が発生する
                 sendResponse({});
             }
+        }
+    });
+
+    // キー押下の監視イベントを追加
+    function AddEvent(target, event_name, event_function, info) {
+        if (!info) {
+            target.addEventListener(event_name, event_function, false);
+            return;
+        }
+
+        // 必要な処理があれば追加。
+    }
+
+    AddEvent(d.body, 'keydown', function cb_KeyCheck(event) {
+        var active_element = d.activeElement;
+        var key_code = event.keyCode;
+        Logger('press key: ' + key_code);
+
+        // 押されたkeyを調べる
+        switch (key_code) {
+        case 68: // d
+            Download(active_element);
+            break;
+        default:
         }
     });
 
@@ -50,7 +74,7 @@
     }
 
     // 画像情報を取得する。
-    function getImgInfo(doc) {
+    function GetImgInfo(doc) {
         var result = false
           , fullname = null
           , tweet = null
@@ -71,10 +95,10 @@
             }
             result = true;
         }
-        logger('fullname: ' + fullname);
-        logger('tweet: ' + tweet);
+        Logger('fullname: ' + fullname);
+        Logger('tweet: ' + tweet);
         for (i=0; i<imgurls.length; i++) {
-            logger('imgurl: ' + imgurls[i]);
+            Logger('imgurl: ' + imgurls[i]);
         }
 
         return {
@@ -83,6 +107,29 @@
             tweet: tweet,
             imgurls: imgurls
         };
+    }
+
+    // 画像をダウンロードする。
+    function Download(target) {
+        // 画像情報取得
+        var info = GetImgInfo(target);
+        if (!info.result) {
+            Logger("image is not found.");
+            return;
+        }
+        // ファイル名とURL生成
+        // TODO: :origに画像が存在しないケース
+        for (var i = 0; i < info.imgurls.length; i++) {
+            var img_url_orig = GetImgUrl( info.imgurls[i], ':orig' );
+            var filename = GetImgFilename(img_url_orig, info.fullname, info.tweet);
+            // background側でchrome.downloads.downloadを実行して保存する。
+            // TODO: 任意の保存先を指定したい。
+            chrome.runtime.sendMessage({
+                message: 'download-media-image',
+                img_url_orig: img_url_orig,
+                filename: filename
+            });
+        }
     }
 }
 )(window, document);

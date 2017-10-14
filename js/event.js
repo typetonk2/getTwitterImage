@@ -29,6 +29,17 @@
         }
     }
 
+    // 画像をDLする for content script.
+    chrome.runtime.onMessage.addListener(function(msg, sender, response) {
+        if (msg.message = "download-media-image") {
+            logger("start download: " + msg.filename);
+            chrome.downloads.download({
+                url: msg.img_url_orig,
+                filename: msg.filename
+            });
+        }
+    });
+
     // contextMenuクリック時の処理
     chrome.contextMenus.onClicked.addListener(function cb_ContextOnClick(info, tab) {
         // 現在のタブに対し content script を実行する。
