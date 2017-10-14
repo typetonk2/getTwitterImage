@@ -1,0 +1,31 @@
+{
+	"manifest_version": 2,
+
+   "name": "getTwitterImage",
+   "description": "Get Twitter images with contextMenu or shortcut(d).",
+	"version": "0.3",
+
+   "background": {
+      "persistent": false,
+      "scripts": [ "js/event.js" ]
+   },
+
+  "content_scripts": [{
+    "matches": [
+      "https://twitter.com/*",
+      "*://pbs.twimg.com/*"
+    ],
+    "all_frames": false,
+    "run_at": "document_end",
+    "js": [
+      "js/content.js"
+    ]
+  }],
+
+  "permissions": [
+    "*://twitter.com/*",
+    "*://pbs.twimg.com/*",
+    "contextMenus",
+    "downloads"
+  ]
+}
