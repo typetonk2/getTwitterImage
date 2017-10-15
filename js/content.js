@@ -74,6 +74,7 @@
     }
 
     // 画像情報を取得する。
+    // TODO: tweetにタグや画像URLが含まれているケース
     function GetImgInfo(doc) {
         var result = false
           , fullname = null
@@ -82,13 +83,13 @@
         // 画像詳細画面
         if (doc.querySelector('.media-image')) {
             fullname = doc.querySelector('.Gallery-content .fullname').innerHTML;
-            tweet = doc.querySelector('.Gallery-content .js-tweet-text-container > p').innerHTML.match(/(.*)\<a href.*/)[1].substring(0, 15);
+            tweet = doc.querySelector('.Gallery-content .js-tweet-text-container > p').innerText.substring(0, 15);
             imgurls = [doc.querySelector('.media-image').src];
             result = true;
             // ツイート詳細画面
         } else if (doc.querySelector('.permalink-inner .js-adaptive-photo')) {
             fullname = doc.querySelector('.permalink-inner .fullname').innerText
-            tweet = doc.querySelector('.permalink-inner .js-tweet-text-container > p').innerHTML.match(/(.*)\<a href.*/)[1].substring(0, 15);
+            tweet = doc.querySelector('.permalink-inner .js-tweet-text-container > p').innerText.substring(0, 15);
             var url_list = doc.querySelectorAll('.permalink-inner .js-adaptive-photo > img');
             for (var i = 0; i < url_list.length; i++) {
                 imgurls.push(url_list[i].src);
