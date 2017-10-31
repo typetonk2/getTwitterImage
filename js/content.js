@@ -15,7 +15,7 @@
     chrome.runtime.onMessage.addListener(function cb_GetImgInfo(msg, sender, sendResponse) {
         // contextmenuクリック
         if (msg.type === "contextMenu") {
-            var info = GetImgInfo(d);
+            var info = GetImgInfo(d.activeElement);
             if (info.result) {
                 for (var i=0; i<info.imgurls.length; i++) {
                     chrome.runtime.sendMessage({
@@ -48,18 +48,14 @@
     }
 
     AddEvent(d.body, 'keydown', function cb_KeyCheck(event) {
-        var active_element = d.activeElement;
+        var active_element = event.target;
         var key_code = event.keyCode;
         Logger('press key: ' + key_code);
 
         // 押されたkeyを調べる
         switch (key_code) {
         case 68: // d
-            // 画像詳細orツイート詳細の時だけ実行
-            if ( $('.permalink-inner .js-adaptive-photo').length > 0 ||
-                 $('.media-image').length > 0 ) {
-                Download(active_element);
-            }
+            Download(active_element);
             break;
         default:
         }
@@ -75,18 +71,17 @@
         }
         // ファイル名とURL生成
         for (var i = 0; i < info.imgurls.length; i++) {
-            var img_url_orig = GetImgUrl( info.imgurls[i] );
-            var filename = GetImgFilename(img_url_orig, info.fullname, info.tweet);
             // background側でchrome.downloads.downloadを実行して保存する。
             chrome.runtime.sendMessage({
-                message: 'download',
-                img_url_orig: img_url_orig,
-                filename: filename
+                type: 'download',
+                img_url_orig: info.imgurls[i],
+                filename: info.filenames[i]
             });
         }
     }
 
     // 画像情報を取得する。
+    // TODO: セレクタ部分を何とかしたい。
     function GetImgInfo(doc) {
         var result = false
           , fullname = null
@@ -96,16 +91,26 @@
         // 画像詳細画面
         if (doc.querySelector('.media-image')) {
             fullname = doc.querySelector('.Gallery-content .fullname').innerHTML;
-            tweet = doc.querySelector('.Gallery-content .js-tweet-text-container > p').innerText.substring(0, 15);
+            tweet = doc.querySelector('.Gallery-content .js-tweet-text-container > p').innerText.replace(/\r?\n/g, "");
             imgurls = [ GetImgUrl(doc.querySelector('.media-image').src) ];
             filenames = [ GetImgFilename(imgurls[0], fullname, tweet) ];
             result = true;
             // ツイート詳細画面
         } else if (doc.querySelector('.permalink-inner .js-adaptive-photo')) {
             fullname = doc.querySelector('.permalink-inner .fullname').innerText
-            tweet = doc.querySelector('.permalink-inner .js-tweet-text-container > p').innerText.substring(0, 15);
+            tweet = doc.querySelector('.permalink-inner .js-tweet-text-container > p').innerText.replace(/\r?\n/g, "");
             var url_list = doc.querySelectorAll('.permalink-inner .js-adaptive-photo > img');
             for (var i = 0; i < url_list.length; i++) {
+                imgurls.push( GetImgUrl(url_list[i].src) );
+                filenames.push( GetImgFilename(imgurls[i], fullname, tweet) );
+            }
+            result = true;
+        } else if (doc.className.match(/js-stream-item/)) {
+            // TLでのDLボタンクリック
+            var fullname = doc.querySelector('.FullNameGroup > strong').innerText;
+            var tweet = doc.querySelector('.js-tweet-text-container > p').innerText.replace(/\r?\n/g, "");
+            var url_list = doc.querySelectorAll('.js-adaptive-photo > img');
+            for (var i=0; i<url_list.length; i++) {
                 imgurls.push( GetImgUrl(url_list[i].src) );
                 filenames.push( GetImgFilename(imgurls[i], fullname, tweet) );
             }
@@ -151,12 +156,50 @@
     }
 
     // 画像のファイル名を返す。
+    // TODO: tweetやユーザー名に特定の記号が含まれていると、chrome.downloads.download を
+    //  実行した時に、「Invalid filename」で失敗する事がある。
     function GetImgFilename(url, fullname, tweet) {
-      if (fullname && tweet) {
-        return fullname + '-' + tweet + url.replace( /^.+\/([^\/.]+)\.(\w+):(\w+)$/, '\($1\).$2' );
-      } else {
-        return url.replace( /^.+\/([^\/.]+)\.(\w+):(\w+)$/, '\($1\).$2' );
-      }
+        url = url.replace( /^.+\/([^\/.]+)\.(\w+):(\w+)$/, '\($1\).$2' );
+        if (fullname || tweet) {
+            // tweetやfullnameから、使えない文字や記号を削除
+            tweet = tweet.replace(/(http(s).*\s|[<>])/g, '')
+                    .replace(/[<>]/g, '')
+                    .replace(/@\S+\s/, '')
+                    .trim()
+                    .substring(0,15);
+            fullname = fullname.trim();
+            return fullname + '-' + tweet + url
+        } else {
+            return url;
+        }
+    }
+
+    // DL用のボタンを作成。
+    var dlBtn = ( function CreateDLButton () {
+        var firstLink = d.createElement('div');
+        firstLink.className = 'ProfileTweet-action ProfileTweet-action--orig';
+
+        var secondBtn = d.createElement('button');
+        secondBtn.className = 'ProfileTweet-actionButton js-action-button js-download-image';
+        secondBtn.type = 'button';
+        secondBtn.innerText = '画像DL';
+
+        firstLink.appendChild(secondBtn);
+        return firstLink;
+    })();
+
+    // ボタン一覧に追加。
+    $('.ProfileTweet-actionList').append(dlBtn);
+
+    // DLボタンのクリックイベントを作成。
+    // $('.js-download-image').on('click', function(event) {
+    var btnList = d.querySelectorAll('.js-download-image');
+    for (let x=0; x<btnList.length; x++) {
+        // 該当ツイートの画像を取得する。
+        AddEvent(btnList[x], 'click', function cb_onClickDownload(event) {
+            var tl = btnList[x].closest('.js-stream-item');
+            Download(tl);
+        });
     }
 }
 )(window, document);

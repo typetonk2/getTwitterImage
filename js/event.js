@@ -50,6 +50,8 @@
         // ダウンロード要求
         if (msg.type = "download") {
             Logger("start download: " + msg.filename);
+            // TODO: もしかして、filenameに / を入れたら、フォルダ階層作れる？
+            // ayasan/ぱてすか で出来てたけど…
             chrome.downloads.download({
                 url: msg.img_url_orig,
                 filename: msg.filename
