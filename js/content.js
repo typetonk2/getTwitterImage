@@ -155,26 +155,37 @@
         }
     }
 
+    // 全角英数字と記号を半角にする
+    function ZtoH(word) {
+        return word.replace(/[Ａ-Ｚａ-ｚ０-９＠＋]/g, function(s) {
+            return String.fromCharCode(s.charCodeAt(0) - 0xFEE0);
+        });
+    }
+
     // 画像のファイル名を返す。
     // TODO: tweetやユーザー名に特定の記号が含まれていると、chrome.downloads.download を
-    //  実行した時に、「Invalid filename」で失敗する事がある。
+    // 実行した時に、「Invalid filename」で失敗する事がある。
+    // TODO: 切り取る文字列をオプション指定したい。
     function GetImgFilename(url, fullname, tweet) {
-        url = url.replace( /^.+\/([^\/.]+)\.(\w+):(\w+)$/, '\($1\).$2' );
-        if (fullname || tweet) {
-            // tweetやfullnameから、使えない文字や記号を削除
-            tweet = tweet.replace(/(http(s).*\s|[<>])/g, '')
-                    .replace(/[<>]/g, '')
-                    .replace(/@\S+\s/, '')
-                    .trim()
-                    .substring(0,15);
-            fullname = fullname.trim();
-            return fullname + '-' + tweet + url
-        } else {
-            return url;
-        }
+        var id = url.replace( /^.+\/([^\/.]+)\.(\w+)(:\w+)?$/, '\($1\).$2' );
+        // tweetやfullnameから、使えない文字や記号を削除
+        fullname = fullname
+            ? ZtoH(fullname)
+            .replace(/@.*$/, '')
+            .trim() + '-'
+            : '';
+        tweet = tweet
+            ? tweet.replace(/(http(s).*\s|[<>])/g, '')
+            .replace(/[<>]/g, '')
+            .replace(/@\S+\s/, '')
+            .trim()
+            .substring(0,15)
+            : '';
+        return fullname + tweet + id;
     }
 
     // DL用のボタンを作成。
+    // TODO: 新たに読み込んだ古いツイートに反映されない。
     var dlBtn = ( function CreateDLButton () {
         var firstLink = d.createElement('div');
         firstLink.className = 'ProfileTweet-action ProfileTweet-action--orig';
