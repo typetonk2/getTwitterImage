@@ -1,6 +1,7 @@
 # getTwitterImage
 
 Save Twitter images in `<Username>-<Tweet>(imageID).<suffix>` format.
+This code is for me to learn WebExtensions.
 
 ## Usage
 
